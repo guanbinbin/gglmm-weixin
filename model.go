@@ -15,19 +15,15 @@ type Authenticationable interface {
 // Account --
 type Account struct {
 	gglmm.Model
+	Status    int8   `json:"status"`
 	Password  string `json:"-"`
 	Nickname  string `json:"nickname"`
-	AvatarURL string `json:"avatarURL"`
+	AvatarURL string `json:"avatarUrl"`
 }
-
-var (
-	// AccountStatuses --
-	AccountStatuses = []gglmm.Status{gglmm.StatusValid, gglmm.StatusFrozen, gglmm.StatusInvalid}
-)
 
 // CheckPassword --
 func (account Account) CheckPassword(password string) error {
-	return gglmm.BcryptCompareHashAndPassword(account.Password, password)
+	return BcryptCompareHashAndPassword(account.Password, password)
 }
 
 func (account Account) generateJWT(userType string, expires int64, jwtSecret string) (string, jwt.StandardClaims, error) {

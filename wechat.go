@@ -20,6 +20,7 @@ type WechatAccount struct {
 // WechatUser 用户微信表
 type WechatUser struct {
 	WechatAccount
+	Status int8  `json:"status" gorm:"not null;"`
 	UserID int64 `json:"userID"`
 }
 

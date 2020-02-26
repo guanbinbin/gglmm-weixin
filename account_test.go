@@ -98,7 +98,7 @@ func TestHTTP(t *testing.T) {
 			}),
 		)
 
-	router := gglmm.GenerateRouter()
+	router := gglmm.GenerateHttpRouter()
 	check(router, "/api/test/login1", 1, t)
 	check(router, "/api/test/login2", 2, t)
 }
@@ -112,9 +112,11 @@ func check(router *mux.Router, url string, result int64, t *testing.T) {
 
 	responseLogin := gglmm.NewResponse()
 	if err := json.Unmarshal(wLogin.Body.Bytes(), responseLogin); err != nil {
+		t.Log(err)
 		t.Fail()
 	}
 	if responseLogin.Code != http.StatusOK {
+		t.Log(responseLogin.Code)
 		t.Fail()
 	}
 
@@ -129,14 +131,17 @@ func check(router *mux.Router, url string, result int64, t *testing.T) {
 
 	responseBusiness := gglmm.NewResponse()
 	if err := json.Unmarshal(wBusiness.Body.Bytes(), responseBusiness); err != nil {
+		t.Log(err)
 		t.Fail()
 	}
 	t.Log(responseBusiness)
 	if responseBusiness.Code != http.StatusOK {
+		t.Log(responseBusiness.Code)
 		t.Fail()
 	}
 	userID := responseBusiness.Data["userID"].(float64)
 	if userID != float64(result) {
+		t.Log(userID)
 		t.Fail()
 	}
 }
