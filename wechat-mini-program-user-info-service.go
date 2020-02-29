@@ -8,40 +8,40 @@ import (
 	"github.com/weihongguo/gglmm"
 )
 
-// WechatUserInfoService 微信登录服务
-type WechatUserInfoService struct {
+// WechatMiniProgramUserInfoService 微信登录服务
+type WechatMiniProgramUserInfoService struct {
 	jwtExpires int64
 	jwtSecret  string
 }
 
-// NewWechatUserInfoService 新建用户服务
-func NewWechatUserInfoService(jwtExpires int64, jwtSecret string) *WechatUserInfoService {
-	return &WechatUserInfoService{
+// NewWechatMiniProgramUserInfoService 新建用户服务
+func NewWechatMiniProgramUserInfoService(jwtExpires int64, jwtSecret string) *WechatMiniProgramUserInfoService {
+	return &WechatMiniProgramUserInfoService{
 		jwtExpires: jwtExpires,
 		jwtSecret:  jwtSecret,
 	}
 }
 
-// NewWechatUserInfoServiceConfig 新建用户服务
-func NewWechatUserInfoServiceConfig(config ConfigJWT) *WechatUserInfoService {
-	return NewWechatUserInfoService(config.Expires, config.Secret)
+// NewWechatMiniProgramUserInfoServiceConfig 新建用户服务
+func NewWechatMiniProgramUserInfoServiceConfig(config ConfigJWT) *WechatMiniProgramUserInfoService {
+	return NewWechatMiniProgramUserInfoService(config.Expires, config.Secret)
 }
 
 // CustomActions --
-func (service *WechatUserInfoService) CustomActions() ([]*gglmm.HTTPAction, error) {
+func (service *WechatMiniProgramUserInfoService) CustomActions() ([]*gglmm.HTTPAction, error) {
 	actions := []*gglmm.HTTPAction{
-		gglmm.NewHTTPAction("/user-info", service.UserInfo, "PUT"),
+		gglmm.NewHTTPAction("/wechat/mini-program/user-info", service.MiniProgramUserInfo, "PUT"),
 	}
 	return actions, nil
 }
 
 // RESTAction --
-func (service *WechatUserInfoService) RESTAction(action gglmm.RESTAction) (*gglmm.HTTPAction, error) {
+func (service *WechatMiniProgramUserInfoService) RESTAction(action gglmm.RESTAction) (*gglmm.HTTPAction, error) {
 	return nil, nil
 }
 
-// UserInfo --
-func (service *WechatUserInfoService) UserInfo(w http.ResponseWriter, r *http.Request) {
+// MiniProgramUserInfo --
+func (service *WechatMiniProgramUserInfoService) MiniProgramUserInfo(w http.ResponseWriter, r *http.Request) {
 	jwtUser := JWTUser{}
 	err := GetJWTClaimsSubjectFromRequest(r, &jwtUser)
 	if err != nil {
@@ -50,19 +50,19 @@ func (service *WechatUserInfoService) UserInfo(w http.ResponseWriter, r *http.Re
 	}
 
 	decoder := json.NewDecoder(r.Body)
-	wechatUserInfoRequest := WechatUserInfoRequest{}
-	if err := decoder.Decode(&wechatUserInfoRequest); err != nil {
+	userInfoRequest := WechatMiniProgramUserInfoRequest{}
+	if err := decoder.Decode(&userInfoRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
 
-	if wechatUserInfoRequest.Check("raw") {
-		service.rawUserInfo(w, jwtUser, wechatUserInfoRequest)
+	if userInfoRequest.Check("raw") {
+		service.miniProgramRawUserInfo(w, jwtUser, userInfoRequest)
 		return
 	}
 
-	if wechatUserInfoRequest.Check("encrypted") {
-		service.encryptedUserInfo(w, jwtUser, wechatUserInfoRequest)
+	if userInfoRequest.Check("encrypted") {
+		service.miniProgramEncryptedUserInfo(w, jwtUser, userInfoRequest)
 		return
 	}
 
@@ -70,16 +70,16 @@ func (service *WechatUserInfoService) UserInfo(w http.ResponseWriter, r *http.Re
 }
 
 // rawUserInfo --
-func (service *WechatUserInfoService) rawUserInfo(w http.ResponseWriter, jwtUser JWTUser, wechatUserInfoRequest WechatUserInfoRequest) {
+func (service *WechatMiniProgramUserInfoService) miniProgramRawUserInfo(w http.ResponseWriter, jwtUser JWTUser, userInfoRequest WechatMiniProgramUserInfoRequest) {
 
 	db := gglmm.GormDB()
 
-	wechatUser := WechatUser{}
+	wechatUser := WechatMiniProgramUser{}
 	if err := db.Where("user_id = ?", jwtUser.UserID).First(&wechatUser).Error; err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-	if !wechatUserInfoRequest.CheckSignature(wechatUser.SessionKey) {
+	if !userInfoRequest.CheckSignature(wechatUser.SessionKey) {
 		gglmm.NewFailResponse("signature chect invalid").WriteJSON(w)
 		return
 	}
@@ -90,7 +90,7 @@ func (service *WechatUserInfoService) rawUserInfo(w http.ResponseWriter, jwtUser
 		return
 	}
 
-	if err := wechatUpdateUser(&wechatUser, &user, &wechatUserInfoRequest.UserInfo); err != nil {
+	if err := miniProgramUpdateUser(&wechatUser, &user, &userInfoRequest.UserInfo); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
@@ -108,17 +108,17 @@ func (service *WechatUserInfoService) rawUserInfo(w http.ResponseWriter, jwtUser
 
 // encryptedUserInfo 解析加密数据
 // Session没有过期，下发新token
-func (service *WechatUserInfoService) encryptedUserInfo(w http.ResponseWriter, jwtUser JWTUser, wechatUserInfoRequest WechatUserInfoRequest) {
+func (service *WechatMiniProgramUserInfoService) miniProgramEncryptedUserInfo(w http.ResponseWriter, jwtUser JWTUser, userInfoRequest WechatMiniProgramUserInfoRequest) {
 
 	db := gglmm.GormDB()
 
-	wechatUser := WechatUser{}
+	wechatUser := WechatMiniProgramUser{}
 	if err := db.First(&wechatUser, jwtUser.UserID).Error; err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
 
-	wechatUserInfo, err := wechatUserInfoRequest.Decrypt(wechatUser.SessionKey)
+	wechatUserInfo, err := userInfoRequest.Decrypt(wechatUser.SessionKey)
 	if err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
@@ -130,7 +130,7 @@ func (service *WechatUserInfoService) encryptedUserInfo(w http.ResponseWriter, j
 		return
 	}
 
-	if err = wechatUpdateUser(&wechatUser, &user, wechatUserInfo); err != nil {
+	if err = miniProgramUpdateUser(&wechatUser, &user, wechatUserInfo); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
@@ -155,38 +155,35 @@ func (service *WechatUserInfoService) encryptedUserInfo(w http.ResponseWriter, j
 		WriteJSON(w)
 }
 
-func wechatUpdateUser(wechatUser *WechatUser, user *User, wechatUserInfo *WechatUserInfo) error {
+func miniProgramUpdateUser(miniProgramUser *WechatMiniProgramUser, user *User, userInfo *WechatMiniProgramUserInfo) error {
 	tx := gglmm.GormBegin()
 	if tx == nil {
 		return errors.New("do not found")
 	}
 
-	wechatUserUpdates := map[string]interface{}{
-		"nickname":   wechatUserInfo.Nickname,
-		"avatar_url": wechatUserInfo.AvatarURL,
-		"gender":     wechatUserInfo.Gender,
-		"province":   wechatUserInfo.Province,
-		"city":       wechatUserInfo.City,
-		"country":    wechatUserInfo.Country,
-		"language":   wechatUserInfo.Language,
+	miniProgramUserUpdates := map[string]interface{}{
+		"nickname":   userInfo.Nickname,
+		"avatar_url": userInfo.AvatarURL,
+		"gender":     userInfo.Gender,
+		"province":   userInfo.Province,
+		"city":       userInfo.City,
+		"country":    userInfo.Country,
+		"language":   userInfo.Language,
 	}
-	if err := tx.Model(&wechatUser).Updates(wechatUserUpdates).Error; err != nil {
+	if err := tx.Model(&miniProgramUser).Updates(miniProgramUserUpdates).Error; err != nil {
 		tx.Rollback()
-
 		return err
 	}
 
 	userUpdates := map[string]interface{}{
-		"nickname":   wechatUserInfo.Nickname,
-		"avatar_url": wechatUserInfo.AvatarURL,
+		"nickname":   userInfo.Nickname,
+		"avatar_url": userInfo.AvatarURL,
 	}
 	if err := tx.Model(&user).Updates(userUpdates).Error; err != nil {
 		tx.Rollback()
-
 		return err
 	}
 
 	tx.Commit()
-
 	return nil
 }

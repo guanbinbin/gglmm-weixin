@@ -12,20 +12,20 @@ import (
 )
 
 const (
-	wechatCode2SessionURL = "https://api.weixin.qq.com/sns/jscode2session?grant_type=authorization_code"
+	wechatMiniProgramCode2SessionURL = "https://api.weixin.qq.com/sns/jscode2session?grant_type=authorization_code"
 )
 
-// WechatLoginService 微信登录服务
-type WechatLoginService struct {
+// WechatMiniProgramLoginService 微信登录服务
+type WechatMiniProgramLoginService struct {
 	appID      string
 	appSecret  string
 	jwtExpires int64
 	jwtSecret  string
 }
 
-// NewWechatLoginService 新建用户服务
-func NewWechatLoginService(appID string, appSecret string, jwtExpires int64, jwtSecret string) *WechatLoginService {
-	return &WechatLoginService{
+// NewWechatMiniProgramLoginService 新建用户服务
+func NewWechatMiniProgramLoginService(appID string, appSecret string, jwtExpires int64, jwtSecret string) *WechatMiniProgramLoginService {
+	return &WechatMiniProgramLoginService{
 		appID:      appID,
 		appSecret:  appSecret,
 		jwtExpires: jwtExpires,
@@ -33,43 +33,43 @@ func NewWechatLoginService(appID string, appSecret string, jwtExpires int64, jwt
 	}
 }
 
-// NewWechatLoginServiceConfig 新建用户服务
-func NewWechatLoginServiceConfig(miniProgramConfig ConfigMiniProgram, jwtConfig ConfigJWT) *WechatLoginService {
+// NewWechatMiniProgramLoginServiceConfig 新建用户服务
+func NewWechatMiniProgramLoginServiceConfig(miniProgramConfig ConfigMiniProgram, jwtConfig ConfigJWT) *WechatMiniProgramLoginService {
 	if !miniProgramConfig.Check() || !jwtConfig.Check("all") {
 		log.Printf("%+v %+v\n", miniProgramConfig, jwtConfig)
 		log.Fatal("Config check invalid")
 	}
-	return NewWechatLoginService(miniProgramConfig.AppID, miniProgramConfig.AppSecret, jwtConfig.Expires, jwtConfig.Secret)
+	return NewWechatMiniProgramLoginService(miniProgramConfig.AppID, miniProgramConfig.AppSecret, jwtConfig.Expires, jwtConfig.Secret)
 }
 
 // CustomActions --
-func (service *WechatLoginService) CustomActions() ([]*gglmm.HTTPAction, error) {
+func (service *WechatMiniProgramLoginService) CustomActions() ([]*gglmm.HTTPAction, error) {
 	actions := []*gglmm.HTTPAction{
-		gglmm.NewHTTPAction("/login", service.Login, "POST"),
+		gglmm.NewHTTPAction("/wechat/mini-program/login", service.MiniProgramLogin, "POST"),
 	}
 	return actions, nil
 }
 
 // RESTAction --
-func (service *WechatLoginService) RESTAction(action gglmm.RESTAction) (*gglmm.HTTPAction, error) {
+func (service *WechatMiniProgramLoginService) RESTAction(action gglmm.RESTAction) (*gglmm.HTTPAction, error) {
 	return nil, nil
 }
 
-// Login 登录-微信
+// MiniProgramLogin 登录-微信
 // Session已经过期或第一次登录，下发token
-func (service *WechatLoginService) Login(w http.ResponseWriter, r *http.Request) {
+func (service *WechatMiniProgramLoginService) MiniProgramLogin(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	wechatLoginRequest := WechatLoginRequest{}
-	if err := decoder.Decode(&wechatLoginRequest); err != nil {
+	loginRequest := WechatMiniProgramLoginRequest{}
+	if err := decoder.Decode(&loginRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-	if !wechatLoginRequest.Check() {
+	if !loginRequest.Check() {
 		gglmm.NewFailResponse("请求错误").WriteJSON(w)
 		return
 	}
 
-	code2SessionRespons, err := service.code2Session(wechatLoginRequest.Code)
+	code2SessionRespons, err := service.code2Session(loginRequest.Code)
 	if err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
@@ -77,7 +77,7 @@ func (service *WechatLoginService) Login(w http.ResponseWriter, r *http.Request)
 
 	db := gglmm.GormDB()
 
-	wechatUser := WechatUser{}
+	wechatUser := WechatMiniProgramUser{}
 	if err := db.Where("open_id = ?", code2SessionRespons.OpenID).First(&wechatUser).Error; err != nil && err != gglmm.ErrGormRecordNotFound {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
@@ -98,7 +98,6 @@ func (service *WechatLoginService) Login(w http.ResponseWriter, r *http.Request)
 		wechatUser.OpenID = code2SessionRespons.OpenID
 		wechatUser.SessionKey = code2SessionRespons.SessionKey
 		wechatUser.UnionID = code2SessionRespons.UnionID
-		wechatUser.Status = gglmm.StatusValid.Value
 		wechatUser.UserID = user.ID
 		if err = tx.Create(&wechatUser).Error; err != nil {
 			tx.Rollback()
@@ -145,7 +144,7 @@ func (service *WechatLoginService) Login(w http.ResponseWriter, r *http.Request)
 		WriteJSON(w)
 }
 
-func (service *WechatLoginService) code2Session(code string) (*WechatCode2SessionResponse, error) {
+func (service *WechatMiniProgramLoginService) code2Session(code string) (*WechatCode2SessionResponse, error) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -156,7 +155,7 @@ func (service *WechatLoginService) code2Session(code string) (*WechatCode2Sessio
 		Transport: transport,
 	}
 
-	url := wechatCode2SessionURL + "&appid=" + service.appID + "&secret=" + service.appSecret + "&js_code=" + code
+	url := wechatMiniProgramCode2SessionURL + "&appid=" + service.appID + "&secret=" + service.appSecret + "&js_code=" + code
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

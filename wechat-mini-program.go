@@ -2,9 +2,10 @@ package account
 
 import "github.com/weihongguo/gglmm"
 
-// WechatAccount --
-type WechatAccount struct {
+// WechatMiniProgramUser --
+type WechatMiniProgramUser struct {
 	gglmm.Model
+	UserID     int64  `json:"userID"`
 	OpenID     string `json:"openID"`
 	UnionID    string `json:"unionID"`
 	SessionKey string `json:"sessionKey"`
@@ -17,14 +18,7 @@ type WechatAccount struct {
 	Language   string `json:"language"`
 }
 
-// WechatUser 用户微信表
-type WechatUser struct {
-	WechatAccount
-	Status int8  `json:"status" gorm:"not null;"`
-	UserID int64 `json:"userID"`
-}
-
 // ResponseKey --
-func (wechatUser WechatUser) ResponseKey() [2]string {
-	return [...]string{"wechatUser", "wechatUsers"}
+func (wechatUser WechatMiniProgramUser) ResponseKey() [2]string {
+	return [...]string{"wechatMiniProgramUser", "wechatMiniProgramUsers"}
 }

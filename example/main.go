@@ -55,9 +55,9 @@ func main() {
 	gglmm.RegisterHTTPHandler(account.NewAuthInfoService(account.User{}), "/user").
 		Middleware(account.JWTAuthMiddleware([]string{"user"}))
 
-	gglmm.RegisterHTTPHandler(account.NewWechatLoginService("appID", "appSecret", 31536000, "user"), "/wechat")
+	gglmm.RegisterHTTPHandler(account.NewWechatMiniProgramLoginService("appID", "appSecret", 31536000, "user"), "")
 
-	gglmm.RegisterHTTPHandler(account.NewWechatUserInfoService(31536000, "user"), "/wechat").
+	gglmm.RegisterHTTPHandler(account.NewWechatMiniProgramUserInfoService(31536000, "user"), "").
 		Middleware(account.JWTAuthMiddleware([]string{"user"}))
 
 	gglmm.RegisterHTTPHandler(&ExampleService{}, "/example").
