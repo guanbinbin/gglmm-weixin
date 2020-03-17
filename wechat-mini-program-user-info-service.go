@@ -30,7 +30,7 @@ func NewWechatMiniProgramUserInfoServiceConfig(config ConfigJWT) *WechatMiniProg
 // CustomActions --
 func (service *WechatMiniProgramUserInfoService) CustomActions() ([]*gglmm.HTTPAction, error) {
 	actions := []*gglmm.HTTPAction{
-		gglmm.NewHTTPAction("/wechat/mini-program/user-info", service.MiniProgramUserInfo, "PUT"),
+		gglmm.NewHTTPAction("/wechat-mini-program/user-info", service.MiniProgramUserInfo, "PUT"),
 	}
 	return actions, nil
 }

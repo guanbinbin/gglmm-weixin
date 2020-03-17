@@ -45,7 +45,7 @@ func NewWechatMiniProgramLoginServiceConfig(miniProgramConfig ConfigMiniProgram,
 // CustomActions --
 func (service *WechatMiniProgramLoginService) CustomActions() ([]*gglmm.HTTPAction, error) {
 	actions := []*gglmm.HTTPAction{
-		gglmm.NewHTTPAction("/wechat/mini-program/login", service.MiniProgramLogin, "POST"),
+		gglmm.NewHTTPAction("/wechat-mini-program/login", service.MiniProgramLogin, "POST"),
 	}
 	return actions, nil
 }

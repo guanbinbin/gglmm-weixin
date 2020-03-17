@@ -31,9 +31,9 @@ create table if not exists `user` (
   unique key `uk_mobile` (`mobile`)
 );
 
-drop table if exists `wechat_user`;
+drop table if exists `wechat_mini_program_user`;
 
-create table if not exists `wechat_user` (
+create table if not exists `wechat_mini_program_user` (
   `id` bigint unsigned not null auto_increment,
   `created_at` timestamp null default null,
   `updated_at` timestamp null default null,
