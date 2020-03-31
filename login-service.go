@@ -11,8 +11,9 @@ import (
 
 // LoginService 登录服务
 type LoginService struct {
+	repository *gglmm.GormRepository
 	modelType  reflect.Type
-	repository *gglmm.Repository
+
 	jwtExpires int64
 	jwtSecret  string
 }
@@ -20,8 +21,8 @@ type LoginService struct {
 // NewLoginService 新建用户服务
 func NewLoginService(model Authenticationable, jwtExpires int64, jwtSecret string) *LoginService {
 	return &LoginService{
+		repository: gglmm.DefaultGormRepository(),
 		modelType:  reflect.TypeOf(model),
-		repository: gglmm.NewRepository(model),
 		jwtExpires: jwtExpires,
 		jwtSecret:  jwtSecret,
 	}
@@ -64,9 +65,9 @@ func (service *LoginService) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filterRequest := gglmm.FilterRequest{}
-	filterRequest.AddFilter(gglmm.Filter{Field: "mobile", Operate: gglmm.FilterOperateEqual, Value: loginRequest.Mobile})
-	user := gglmm.ReflectNew(service.modelType)
-	if err := service.repository.First(filterRequest, user); err != nil {
+	filterRequest.AddFilter("mobile", gglmm.FilterOperateEqual, loginRequest.Mobile)
+	user := reflect.New(service.modelType).Interface()
+	if err := service.repository.Get(user, filterRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}

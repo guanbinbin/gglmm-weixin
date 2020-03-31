@@ -5,6 +5,7 @@ import (
 
 	"github.com/weihongguo/gglmm"
 	account "github.com/weihongguo/gglmm-account"
+	redis "github.com/weihongguo/gglmm-redis"
 
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
@@ -37,11 +38,12 @@ func (service *ExampleService) AuthInfo(w http.ResponseWriter, r *http.Request) 
 }
 
 func main() {
-	gglmm.RegisterGormDB("mysql", "example:123456@(127.0.0.1:3306)/example?charset=utf8mb4&parseTime=true&loc=UTC", 10, 5, 600)
-	defer gglmm.CloseGormDB()
+	gglmm.RegisterGormRepository("mysql", "example:123456@(127.0.0.1:3306)/example?charset=utf8mb4&parseTime=true&loc=UTC", 10, 5, 600)
+	defer gglmm.CloseGormRepository()
 
-	gglmm.RegisterRedisCacher("tcp", "127.0.0.1:6379", 10, 5, 3)
-	defer gglmm.CloseRedisCacher()
+	cacher := redis.NewCacher("tcp", "127.0.0.1:6379", 5, 10, 3, 10)
+	defer cacher.Close()
+	gglmm.RegisterCacher(cacher)
 
 	gglmm.RegisterBasePath("/api/example")
 

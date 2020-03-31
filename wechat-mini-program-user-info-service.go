@@ -2,7 +2,6 @@ package account
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/weihongguo/gglmm"
@@ -10,6 +9,7 @@ import (
 
 // WechatMiniProgramUserInfoService 微信登录服务
 type WechatMiniProgramUserInfoService struct {
+	repository *gglmm.GormRepository
 	jwtExpires int64
 	jwtSecret  string
 }
@@ -17,6 +17,7 @@ type WechatMiniProgramUserInfoService struct {
 // NewWechatMiniProgramUserInfoService 新建用户服务
 func NewWechatMiniProgramUserInfoService(jwtExpires int64, jwtSecret string) *WechatMiniProgramUserInfoService {
 	return &WechatMiniProgramUserInfoService{
+		repository: gglmm.DefaultGormRepository(),
 		jwtExpires: jwtExpires,
 		jwtSecret:  jwtSecret,
 	}
@@ -71,11 +72,10 @@ func (service *WechatMiniProgramUserInfoService) MiniProgramUserInfo(w http.Resp
 
 // rawUserInfo --
 func (service *WechatMiniProgramUserInfoService) miniProgramRawUserInfo(w http.ResponseWriter, jwtUser JWTUser, userInfoRequest WechatMiniProgramUserInfoRequest) {
-
-	db := gglmm.GormDB()
-
 	wechatUser := WechatMiniProgramUser{}
-	if err := db.Where("user_id = ?", jwtUser.UserID).First(&wechatUser).Error; err != nil {
+	filterRequest := gglmm.FilterRequest{}
+	filterRequest.AddFilter("user_id", gglmm.FilterOperateEqual, jwtUser.UserID)
+	if err := service.repository.Get(&wechatUser, filterRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
@@ -85,12 +85,15 @@ func (service *WechatMiniProgramUserInfoService) miniProgramRawUserInfo(w http.R
 	}
 
 	user := User{}
-	if err := db.First(&user, jwtUser.UserID).Error; err != nil {
+	idRequest := gglmm.IDRequest{
+		ID: jwtUser.UserID,
+	}
+	if err := service.repository.Get(&user, idRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
 
-	if err := miniProgramUpdateUser(&wechatUser, &user, &userInfoRequest.UserInfo); err != nil {
+	if err := service.miniProgramUpdateUser(&wechatUser, &user, &userInfoRequest.UserInfo); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
@@ -109,11 +112,10 @@ func (service *WechatMiniProgramUserInfoService) miniProgramRawUserInfo(w http.R
 // encryptedUserInfo 解析加密数据
 // Session没有过期，下发新token
 func (service *WechatMiniProgramUserInfoService) miniProgramEncryptedUserInfo(w http.ResponseWriter, jwtUser JWTUser, userInfoRequest WechatMiniProgramUserInfoRequest) {
-
-	db := gglmm.GormDB()
-
 	wechatUser := WechatMiniProgramUser{}
-	if err := db.First(&wechatUser, jwtUser.UserID).Error; err != nil {
+	filterRequest := gglmm.FilterRequest{}
+	filterRequest.AddFilter("user_id", gglmm.FilterOperateEqual, jwtUser.UserID)
+	if err := service.repository.Get(&wechatUser, filterRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
@@ -125,12 +127,15 @@ func (service *WechatMiniProgramUserInfoService) miniProgramEncryptedUserInfo(w 
 	}
 
 	user := User{}
-	if err = db.First(&user, jwtUser.UserID).Error; err != nil {
+	idRequest := gglmm.IDRequest{
+		ID: jwtUser.UserID,
+	}
+	if err = service.repository.Get(&user, idRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
 
-	if err = miniProgramUpdateUser(&wechatUser, &user, wechatUserInfo); err != nil {
+	if err = service.miniProgramUpdateUser(&wechatUser, &user, wechatUserInfo); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
@@ -155,11 +160,8 @@ func (service *WechatMiniProgramUserInfoService) miniProgramEncryptedUserInfo(w 
 		WriteJSON(w)
 }
 
-func miniProgramUpdateUser(miniProgramUser *WechatMiniProgramUser, user *User, userInfo *WechatMiniProgramUserInfo) error {
-	tx := gglmm.GormBegin()
-	if tx == nil {
-		return errors.New("do not found")
-	}
+func (service *WechatMiniProgramUserInfoService) miniProgramUpdateUser(miniProgramUser *WechatMiniProgramUser, user *User, userInfo *WechatMiniProgramUserInfo) error {
+	tx := service.repository.Begin()
 
 	miniProgramUserUpdates := map[string]interface{}{
 		"nickname":   userInfo.Nickname,

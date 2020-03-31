@@ -17,6 +17,7 @@ const (
 
 // WechatMiniProgramLoginService 微信登录服务
 type WechatMiniProgramLoginService struct {
+	repository *gglmm.GormRepository
 	appID      string
 	appSecret  string
 	jwtExpires int64
@@ -26,6 +27,7 @@ type WechatMiniProgramLoginService struct {
 // NewWechatMiniProgramLoginService 新建用户服务
 func NewWechatMiniProgramLoginService(appID string, appSecret string, jwtExpires int64, jwtSecret string) *WechatMiniProgramLoginService {
 	return &WechatMiniProgramLoginService{
+		repository: gglmm.DefaultGormRepository(),
 		appID:      appID,
 		appSecret:  appSecret,
 		jwtExpires: jwtExpires,
@@ -75,17 +77,17 @@ func (service *WechatMiniProgramLoginService) MiniProgramLogin(w http.ResponseWr
 		return
 	}
 
-	db := gglmm.GormDB()
-
 	wechatUser := WechatMiniProgramUser{}
-	if err := db.Where("open_id = ?", code2SessionRespons.OpenID).First(&wechatUser).Error; err != nil && err != gglmm.ErrGormRecordNotFound {
+	filterRequest := gglmm.FilterRequest{}
+	filterRequest.AddFilter("open_id", gglmm.FilterOperateEqual, code2SessionRespons.OpenID)
+	if err := service.repository.Get(&wechatUser, filterRequest); err != nil && err != gglmm.ErrGormRecordNotFound {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
 
 	user := User{}
-	if gglmm.GormNewRecord(wechatUser) {
-		tx := gglmm.GormBegin()
+	if service.repository.NewRecord(wechatUser) {
+		tx := service.repository.Begin()
 
 		user.Nickname = "Wechat"
 		if err = tx.Create(&user).Error; err != nil {
@@ -108,18 +110,22 @@ func (service *WechatMiniProgramLoginService) MiniProgramLogin(w http.ResponseWr
 
 		tx.Commit()
 	} else {
-		if err = db.First(&user, wechatUser.UserID).Error; err != nil {
+		idRequest := gglmm.IDRequest{
+			ID: wechatUser.UserID,
+		}
+		if err = service.repository.Get(&user, idRequest); err != nil {
 			gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 			return
 		}
 
-		if err = db.Model(&wechatUser).Update("session_key", code2SessionRespons.SessionKey).Error; err != nil {
+		wechatUser.SessionKey = code2SessionRespons.SessionKey
+		if err = service.repository.Update(wechatUser, wechatUser.ID); err != nil {
 			gglmm.NewFailResponse("更新SessionKey失败").WriteJSON(w)
 			return
 		}
 	}
 
-	if gglmm.GormNewRecord(user) {
+	if service.repository.NewRecord(user) {
 		gglmm.NewFailResponse("用户不存在").WriteJSON(w)
 		return
 	}

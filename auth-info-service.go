@@ -9,15 +9,15 @@ import (
 
 // AuthInfoService 登录服务
 type AuthInfoService struct {
+	repository *gglmm.GormRepository
 	modelType  reflect.Type
-	repository *gglmm.Repository
 }
 
 // NewAuthInfoService 新建用户服务
 func NewAuthInfoService(model Authenticationable) *AuthInfoService {
 	return &AuthInfoService{
+		repository: gglmm.DefaultGormRepository(),
 		modelType:  reflect.TypeOf(model),
-		repository: gglmm.NewRepository(model),
 	}
 }
 
@@ -42,8 +42,11 @@ func (service *AuthInfoService) AuthInfo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user := gglmm.ReflectNew(service.modelType)
-	if err := service.repository.Get(jwtUser.UserID, user, nil); err != nil {
+	user := reflect.New(service.modelType).Interface()
+	idRequest := gglmm.IDRequest{
+		ID: jwtUser.UserID,
+	}
+	if err := service.repository.Get(user, idRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}

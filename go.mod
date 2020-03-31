@@ -4,6 +4,8 @@ go 1.13
 
 replace github.com/weihongguo/gglmm => ../gglmm
 
+replace github.com/weihongguo/gglmm-gorm => ../gglmm-gorm
+
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gorilla/mux v1.7.3
