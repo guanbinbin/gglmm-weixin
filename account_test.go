@@ -13,6 +13,19 @@ import (
 var jwtSecret1 string = "test1"
 var jwtSecret2 string = "test2"
 
+type Test struct {
+	ID int64
+}
+
+func (test Test) AuthInfo() *AuthInfo {
+	return &AuthInfo{
+		Type:      "test",
+		ID:        test.ID,
+		Nickname:  "test",
+		AvatarURL: "test",
+	}
+}
+
 type TestLoginService struct{}
 
 func (service *TestLoginService) CustomActions() ([]*gglmm.HTTPAction, error) {
@@ -20,15 +33,17 @@ func (service *TestLoginService) CustomActions() ([]*gglmm.HTTPAction, error) {
 		gglmm.NewHTTPAction(
 			"/login1",
 			func(w http.ResponseWriter, r *http.Request) {
-				jwtUser := &JWTUser{}
-				jwtUser.UserID = 1
-				token, _, err := GenerateJWTToken(jwtUser, JWTExpires, jwtSecret1)
+				test := Test{
+					ID: 1,
+				}
+				authToken, _, err := GenerateAuthToken(test, JWTExpires, jwtSecret1)
 				if err != nil {
 					gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 					return
 				}
 				gglmm.NewSuccessResponse().
-					AddData("token", token).
+					AddData("authToken", authToken).
+					AddData("authInfo", test.AuthInfo()).
 					WriteJSON(w)
 			},
 			"POST",
@@ -36,15 +51,17 @@ func (service *TestLoginService) CustomActions() ([]*gglmm.HTTPAction, error) {
 		gglmm.NewHTTPAction(
 			"/login2",
 			func(w http.ResponseWriter, r *http.Request) {
-				jwtUser := &JWTUser{}
-				jwtUser.UserID = 2
-				token, _, err := GenerateJWTToken(jwtUser, JWTExpires, jwtSecret2)
+				test := Test{
+					ID: 2,
+				}
+				authToken, _, err := GenerateAuthToken(test, JWTExpires, jwtSecret1)
 				if err != nil {
 					gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 					return
 				}
 				gglmm.NewSuccessResponse().
-					AddData("token", token).
+					AddData("authToken", authToken).
+					AddData("authInfo", test.AuthInfo()).
 					WriteJSON(w)
 			}, "POST",
 		),
@@ -63,15 +80,14 @@ func (service *TestBusinessService) CustomActions() ([]*gglmm.HTTPAction, error)
 		gglmm.NewHTTPAction(
 			"/test",
 			func(w http.ResponseWriter, r *http.Request) {
-				jwtUser := &JWTUser{}
-				err := GetJWTClaimsSubjectFromRequest(r, jwtUser)
+				id, err := GetAuthID(r, "test")
 				if err != nil {
 					gglmm.NewFailResponse("claims subject").
 						WriteJSON(w)
 					return
 				}
 				gglmm.NewSuccessResponse().
-					AddData("userID", jwtUser.UserID).
+					AddData("userID", id).
 					WriteJSON(w)
 			},
 			"GET",
@@ -120,12 +136,12 @@ func check(router *mux.Router, url string, result int64, t *testing.T) {
 		t.Fail()
 	}
 
-	token := responseLogin.Data["token"].(string)
-	t.Log(token)
+	authToken := responseLogin.Data["authToken"].(string)
+	t.Log(authToken)
 
 	wBusiness := httptest.NewRecorder()
 	rBusiness, _ := http.NewRequest("GET", "/api/business/test", nil)
-	rBusiness.Header.Add("Authorization", "Bearer "+token)
+	rBusiness.Header.Add("Authorization", "Bearer "+authToken)
 
 	router.ServeHTTP(wBusiness, rBusiness)
 
@@ -134,7 +150,7 @@ func check(router *mux.Router, url string, result int64, t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	t.Log(responseBusiness)
+	t.Logf("%+v", responseBusiness)
 	if responseBusiness.Code != http.StatusOK {
 		t.Log(responseBusiness.Code)
 		t.Fail()

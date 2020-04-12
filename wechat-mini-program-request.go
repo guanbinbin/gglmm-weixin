@@ -69,6 +69,8 @@ func (request WechatMiniProgramUserInfoRequest) Check(cmd string) bool {
 		if request.IV == "" {
 			return false
 		}
+	} else {
+		return false;
 	}
 	return true
 }

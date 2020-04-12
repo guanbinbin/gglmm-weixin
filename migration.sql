@@ -9,10 +9,22 @@ create table if not exists `administrator` (
   `status` tinyint not null default 1,
   `mobile` varchar(11) not null,
   `password` varchar(255) not null,
+  primary key (`id`),
+  unique key `uk_mobile` (`mobile`)
+);
+
+drop table if exists `administrator_info`;
+
+create table if not exists `administrator_info` (
+  `id` bigint unsigned not null auto_increment,
+  `created_at` timestamp null default null,
+  `updated_at` timestamp null default null,
+  `deleted_at` timestamp null default null,
+  `administrator_id` bigint unsigned not null,
   `nickname` varchar(32) not null,
   `avatar_url` varchar(128) null default null,
   primary key (`id`),
-  unique key `uk_mobile` (`mobile`)
+  unique key `uk_administrator` (`administrator_id`)
 );
 
 drop table if exists `user`;
@@ -31,6 +43,20 @@ create table if not exists `user` (
   unique key `uk_mobile` (`mobile`)
 );
 
+drop table if exists `user_info`;
+
+create table if not exists `user_info` (
+  `id` bigint unsigned not null auto_increment,
+  `created_at` timestamp null default null,
+  `updated_at` timestamp null default null,
+  `deleted_at` timestamp null default null,
+  `user_id` bigint unsigned not null,
+  `nickname` varchar(32) not null,
+  `avatar_url` varchar(128) null default null,
+  primary key (`id`),
+  unique key `uk_user` (`user_id`)
+);
+
 drop table if exists `wechat_mini_program_user`;
 
 create table if not exists `wechat_mini_program_user` (
@@ -38,6 +64,7 @@ create table if not exists `wechat_mini_program_user` (
   `created_at` timestamp null default null,
   `updated_at` timestamp null default null,
   `deleted_at` timestamp null default null,
+  `user_id` bigint unsigned not null,
   `open_id` varchar(32) not null,
   `union_id` varchar(32) null default null,
   `session_key` varchar(32) not null,
@@ -48,8 +75,7 @@ create table if not exists `wechat_mini_program_user` (
   `city` varchar(16) null default null,
   `country` varchar(16) null default null,
   `language` varchar(8) null default null,
-  `user_id` bigint unsigned not null,
   primary key (`id`),
-  unique key `uk_wechat` (`open_id`),
-  unique key `uk_user` (`user_id`)
+  unique key `uk_user` (`user_id`),
+  unique key `uk_wechat` (`open_id`)
 );

@@ -16,8 +16,3 @@ func (request LoginRequest) Check() bool {
 	}
 	return true
 }
-
-// LogoutRequest 退出请求
-type LogoutRequest struct {
-	Token string
-}

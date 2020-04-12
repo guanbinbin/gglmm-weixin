@@ -70,83 +70,66 @@ func (service *WechatMiniProgramLoginService) MiniProgramLogin(w http.ResponseWr
 		gglmm.NewFailResponse("请求错误").WriteJSON(w)
 		return
 	}
-
-	code2SessionRespons, err := service.code2Session(loginRequest.Code)
+	code2SessionResponse, err := service.code2Session(loginRequest.Code)
 	if err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
 	wechatUser := WechatMiniProgramUser{}
 	filterRequest := gglmm.FilterRequest{}
-	filterRequest.AddFilter("open_id", gglmm.FilterOperateEqual, code2SessionRespons.OpenID)
+	filterRequest.AddFilter("open_id", gglmm.FilterOperateEqual, code2SessionResponse.OpenID)
 	if err := service.repository.Get(&wechatUser, filterRequest); err != nil && err != gglmm.ErrGormRecordNotFound {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
 	user := User{}
 	if service.repository.NewRecord(wechatUser) {
 		tx := service.repository.Begin()
-
-		user.Nickname = "Wechat"
+		user.UserInfo = &UserInfo{}
 		if err = tx.Create(&user).Error; err != nil {
 			tx.Rollback()
-
 			gglmm.NewFailResponse("保存账号信息失败").WriteJSON(w)
 			return
 		}
-
-		wechatUser.OpenID = code2SessionRespons.OpenID
-		wechatUser.SessionKey = code2SessionRespons.SessionKey
-		wechatUser.UnionID = code2SessionRespons.UnionID
+		wechatUser.OpenID = code2SessionResponse.OpenID
+		wechatUser.SessionKey = code2SessionResponse.SessionKey
+		wechatUser.UnionID = code2SessionResponse.UnionID
 		wechatUser.UserID = user.ID
 		if err = tx.Create(&wechatUser).Error; err != nil {
 			tx.Rollback()
-
 			gglmm.NewFailResponse("保存账号信息失败").WriteJSON(w)
 			return
 		}
-
 		tx.Commit()
 	} else {
-		idRequest := gglmm.IDRequest{
-			ID: wechatUser.UserID,
+		idReqeust := gglmm.IDRequest{
+			ID:       wechatUser.UserID,
+			Preloads: []string{"UserInfo"},
 		}
-		if err = service.repository.Get(&user, idRequest); err != nil {
+		if err = service.repository.Get(&user, idReqeust); err != nil {
 			gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 			return
 		}
-
-		wechatUser.SessionKey = code2SessionRespons.SessionKey
+		wechatUser.SessionKey = code2SessionResponse.SessionKey
 		if err = service.repository.Update(wechatUser, wechatUser.ID); err != nil {
 			gglmm.NewFailResponse("更新SessionKey失败").WriteJSON(w)
 			return
 		}
 	}
-
 	if service.repository.NewRecord(user) {
 		gglmm.NewFailResponse("用户不存在").WriteJSON(w)
 		return
 	}
-
-	token, jwtClaims, err := user.GenerateJWT(service.jwtExpires, service.jwtSecret)
+	authToken, jwtClaims, err := GenerateAuthToken(user, service.jwtExpires, service.jwtSecret)
 	if err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
-	authInfo, err := user.GenerateAuthenticationInfo()
-	if err != nil {
-		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
-		return
-	}
-
 	gglmm.NewSuccessResponse().
-		AddData("authToken", token).
+		AddData("authToken", authToken).
 		AddData("authIssuedAt", jwtClaims.IssuedAt).
 		AddData("authExpiresAt", jwtClaims.ExpiresAt).
-		AddData("authInfo", authInfo).
+		AddData("authInfo", user.AuthInfo()).
 		WriteJSON(w)
 }
 

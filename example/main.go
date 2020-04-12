@@ -10,13 +10,14 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
+// ExampleService --
 type ExampleService struct {
 }
 
 // CustomActions --
 func (service *ExampleService) CustomActions() ([]*gglmm.HTTPAction, error) {
 	actions := []*gglmm.HTTPAction{
-		gglmm.NewHTTPAction("/auth-info", service.AuthInfo, "GET"),
+		gglmm.NewHTTPAction("/test", service.Test, "GET"),
 	}
 	return actions, nil
 }
@@ -26,15 +27,16 @@ func (service *ExampleService) RESTAction(restAction gglmm.RESTAction) (*gglmm.H
 	return nil, nil
 }
 
-// AuthInfo --
-func (service *ExampleService) AuthInfo(w http.ResponseWriter, r *http.Request) {
-	jwtUser := account.JWTUser{}
-	err := account.GetJWTClaimsSubjectFromRequest(r, &jwtUser)
+// Test --
+func (service *ExampleService) Test(w http.ResponseWriter, r *http.Request) {
+	id, err := account.GetAuthID(r, account.AuthTypeUser)
 	if err != nil {
 		gglmm.NewFailResponse("claims subject").WriteJSON(w)
 		return
 	}
-	gglmm.NewSuccessResponse().WriteJSON(w)
+	gglmm.NewSuccessResponse().
+		AddData("userId", id).
+		WriteJSON(w)
 }
 
 func main() {
@@ -47,14 +49,12 @@ func main() {
 
 	gglmm.RegisterBasePath("/api/example")
 
-	gglmm.RegisterHTTPHandler(account.NewLoginService(account.Administrator{}, 31536000, "administrator"), "/administrator")
-
-	gglmm.RegisterHTTPHandler(account.NewAuthInfoService(account.Administrator{}), "/administrator").
+	gglmm.RegisterHTTPHandler(account.NewAdministratorLoginService(31536000, "administrator"), "")
+	gglmm.RegisterHTTPHandler(account.NewAdministratorAuthInfoService(), "").
 		Middleware(account.JWTAuthMiddleware([]string{"administrator"}))
 
-	gglmm.RegisterHTTPHandler(account.NewLoginService(account.User{}, 31536000, "user"), "/user")
-
-	gglmm.RegisterHTTPHandler(account.NewAuthInfoService(account.User{}), "/user").
+	gglmm.RegisterHTTPHandler(account.NewUserLoginService(31536000, "user"), "")
+	gglmm.RegisterHTTPHandler(account.NewUserAuthInfoService(), "").
 		Middleware(account.JWTAuthMiddleware([]string{"user"}))
 
 	gglmm.RegisterHTTPHandler(account.NewWechatMiniProgramLoginService("appID", "appSecret", 31536000, "user"), "")

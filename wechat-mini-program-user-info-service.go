@@ -43,8 +43,7 @@ func (service *WechatMiniProgramUserInfoService) RESTAction(action gglmm.RESTAct
 
 // MiniProgramUserInfo --
 func (service *WechatMiniProgramUserInfoService) MiniProgramUserInfo(w http.ResponseWriter, r *http.Request) {
-	jwtUser := JWTUser{}
-	err := GetJWTClaimsSubjectFromRequest(r, &jwtUser)
+	userID, err := GetAuthID(r, AuthTypeUser)
 	if err != nil {
 		gglmm.NewFailResponse("claims subject").WriteJSON(w)
 		return
@@ -58,23 +57,24 @@ func (service *WechatMiniProgramUserInfoService) MiniProgramUserInfo(w http.Resp
 	}
 
 	if userInfoRequest.Check("raw") {
-		service.miniProgramRawUserInfo(w, jwtUser, userInfoRequest)
+		service.miniProgramRawUserInfo(w, userID, userInfoRequest)
 		return
 	}
 
 	if userInfoRequest.Check("encrypted") {
-		service.miniProgramEncryptedUserInfo(w, jwtUser, userInfoRequest)
+		service.miniProgramEncryptedUserInfo(w, userID, userInfoRequest)
 		return
 	}
 
 	gglmm.NewFailResponse("check fail").WriteJSON(w)
 }
 
-// rawUserInfo --
-func (service *WechatMiniProgramUserInfoService) miniProgramRawUserInfo(w http.ResponseWriter, jwtUser JWTUser, userInfoRequest WechatMiniProgramUserInfoRequest) {
+// rawUserInfo 更新用户信息
+// 下发新的authInfo
+func (service *WechatMiniProgramUserInfoService) miniProgramRawUserInfo(w http.ResponseWriter, userID int64, userInfoRequest WechatMiniProgramUserInfoRequest) {
 	wechatUser := WechatMiniProgramUser{}
 	filterRequest := gglmm.FilterRequest{}
-	filterRequest.AddFilter("user_id", gglmm.FilterOperateEqual, jwtUser.UserID)
+	filterRequest.AddFilter("user_id", gglmm.FilterOperateEqual, userID)
 	if err := service.repository.Get(&wechatUser, filterRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
@@ -86,77 +86,61 @@ func (service *WechatMiniProgramUserInfoService) miniProgramRawUserInfo(w http.R
 
 	user := User{}
 	idRequest := gglmm.IDRequest{
-		ID: jwtUser.UserID,
+		ID:       userID,
+		Preloads: []string{"UserInfo"},
 	}
 	if err := service.repository.Get(&user, idRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
 	if err := service.miniProgramUpdateUser(&wechatUser, &user, &userInfoRequest.UserInfo); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
-	authInfo, err := user.GenerateAuthenticationInfo()
-	if err != nil {
-		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
-		return
-	}
-
 	gglmm.NewSuccessResponse().
-		AddData("authInfo", authInfo).
+		AddData("authInfo", user.AuthInfo()).
 		WriteJSON(w)
 }
 
-// encryptedUserInfo 解析加密数据
-// Session没有过期，下发新token
-func (service *WechatMiniProgramUserInfoService) miniProgramEncryptedUserInfo(w http.ResponseWriter, jwtUser JWTUser, userInfoRequest WechatMiniProgramUserInfoRequest) {
+// encryptedUserInfo 解析加密数据，更新用户信息
+// 下发新的authToken
+// 下发新的authInfo
+func (service *WechatMiniProgramUserInfoService) miniProgramEncryptedUserInfo(w http.ResponseWriter, userID int64, userInfoRequest WechatMiniProgramUserInfoRequest) {
 	wechatUser := WechatMiniProgramUser{}
 	filterRequest := gglmm.FilterRequest{}
-	filterRequest.AddFilter("user_id", gglmm.FilterOperateEqual, jwtUser.UserID)
+	filterRequest.AddFilter("user_id", gglmm.FilterOperateEqual, userID)
 	if err := service.repository.Get(&wechatUser, filterRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
 	wechatUserInfo, err := userInfoRequest.Decrypt(wechatUser.SessionKey)
 	if err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
 	user := User{}
 	idRequest := gglmm.IDRequest{
-		ID: jwtUser.UserID,
+		ID:       userID,
+		Preloads: []string{"UserInfo"},
 	}
 	if err = service.repository.Get(&user, idRequest); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
 	if err = service.miniProgramUpdateUser(&wechatUser, &user, wechatUserInfo); err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
-	token, jwtClaims, err := user.GenerateJWT(service.jwtExpires, service.jwtSecret)
+	authToken, jwtClaims, err := GenerateAuthToken(user, service.jwtExpires, service.jwtSecret)
 	if err != nil {
 		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
 		return
 	}
-
-	authInfo, err := user.GenerateAuthenticationInfo()
-	if err != nil {
-		gglmm.NewFailResponse(err.Error()).WriteJSON(w)
-		return
-	}
-
 	gglmm.NewSuccessResponse().
-		AddData("authToken", token).
+		AddData("authToken", authToken).
 		AddData("authIssuedAt", jwtClaims.IssuedAt).
 		AddData("authExpiresAt", jwtClaims.ExpiresAt).
-		AddData("authInfo", authInfo).
+		AddData("authInfo", user.AuthInfo()).
 		WriteJSON(w)
 }
 
@@ -172,16 +156,16 @@ func (service *WechatMiniProgramUserInfoService) miniProgramUpdateUser(miniProgr
 		"country":    userInfo.Country,
 		"language":   userInfo.Language,
 	}
-	if err := tx.Model(&miniProgramUser).Updates(miniProgramUserUpdates).Error; err != nil {
+	if err := tx.Model(miniProgramUser).Updates(miniProgramUserUpdates).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	userUpdates := map[string]interface{}{
+	userInfoUpdates := map[string]interface{}{
 		"nickname":   userInfo.Nickname,
 		"avatar_url": userInfo.AvatarURL,
 	}
-	if err := tx.Model(&user).Updates(userUpdates).Error; err != nil {
+	if err := tx.Model(user.UserInfo).Updates(userInfoUpdates).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
