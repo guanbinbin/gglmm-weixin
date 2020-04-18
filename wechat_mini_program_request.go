@@ -1,4 +1,4 @@
-package account
+package wechat
 
 import (
 	"bytes"
@@ -70,7 +70,7 @@ func (request WechatMiniProgramUserInfoRequest) Check(cmd string) bool {
 			return false
 		}
 	} else {
-		return false;
+		return false
 	}
 	return true
 }

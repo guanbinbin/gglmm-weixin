@@ -1,4 +1,4 @@
-module github.com/weihongguo/gglmm-account
+module github.com/weihongguo/gglmm-wechat
 
 go 1.13
 

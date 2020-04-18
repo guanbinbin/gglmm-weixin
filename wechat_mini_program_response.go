@@ -1,4 +1,4 @@
-package account
+package wechat
 
 // WechatResponse --
 type WechatResponse struct {

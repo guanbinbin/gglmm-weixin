@@ -1,4 +1,4 @@
-package account
+package wechat
 
 // ConfigMiniProgram --
 type ConfigMiniProgram struct {
