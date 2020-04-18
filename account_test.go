@@ -1,5 +1,6 @@
 package account
 
+/*
 import (
 	"encoding/json"
 	"net/http"
@@ -38,13 +39,13 @@ func (service *TestLoginService) CustomActions() ([]*gglmm.HTTPAction, error) {
 				}
 				authToken, _, err := GenerateAuthToken(test, JWTExpires, jwtSecret1)
 				if err != nil {
-					gglmm.NewFailResponse(err.Error()).WriteJSON(w)
+					gglmm.FailResponse(err.Error()).JSON(w)
 					return
 				}
-				gglmm.NewSuccessResponse().
+				gglmm.OkResponse().
 					AddData("authToken", authToken).
 					AddData("authInfo", test.AuthInfo()).
-					WriteJSON(w)
+					JSON(w)
 			},
 			"POST",
 		),
@@ -56,20 +57,20 @@ func (service *TestLoginService) CustomActions() ([]*gglmm.HTTPAction, error) {
 				}
 				authToken, _, err := GenerateAuthToken(test, JWTExpires, jwtSecret1)
 				if err != nil {
-					gglmm.NewFailResponse(err.Error()).WriteJSON(w)
+					gglmm.FailResponse(err.Error()).JSON(w)
 					return
 				}
-				gglmm.NewSuccessResponse().
+				gglmm.OkResponse().
 					AddData("authToken", authToken).
 					AddData("authInfo", test.AuthInfo()).
-					WriteJSON(w)
+					JSON(w)
 			}, "POST",
 		),
 	}
 	return actions, nil
 }
 
-func (service *TestLoginService) RESTAction(action gglmm.RESTAction) (*gglmm.HTTPAction, error) {
+func (service *TestLoginService) Action(action string) (*gglmm.HTTPAction, error) {
 	return nil, nil
 }
 
@@ -82,13 +83,12 @@ func (service *TestBusinessService) CustomActions() ([]*gglmm.HTTPAction, error)
 			func(w http.ResponseWriter, r *http.Request) {
 				id, err := GetAuthID(r, "test")
 				if err != nil {
-					gglmm.NewFailResponse("claims subject").
-						WriteJSON(w)
+					gglmm.FailResponse("claims subject").JSON(w)
 					return
 				}
-				gglmm.NewSuccessResponse().
+				gglmm.OkResponse().
 					AddData("userID", id).
-					WriteJSON(w)
+					JSON(w)
 			},
 			"GET",
 		),
@@ -96,17 +96,17 @@ func (service *TestBusinessService) CustomActions() ([]*gglmm.HTTPAction, error)
 	return actions, nil
 }
 
-func (service *TestBusinessService) RESTAction(action gglmm.RESTAction) (*gglmm.HTTPAction, error) {
+func (service *TestBusinessService) Action(action string) (*gglmm.HTTPAction, error) {
 	return nil, nil
 }
 
 func TestHTTP(t *testing.T) {
 
-	gglmm.RegisterBasePath("/api")
+	gglmm.BasePath("/api")
 
-	gglmm.RegisterHTTPHandler(&TestLoginService{}, "/test")
+	gglmm.HandleHTTP(&TestLoginService{}, "/test")
 
-	gglmm.RegisterHTTPHandler(&TestBusinessService{}, "/business").
+	gglmm.HandleHTTP(&TestBusinessService{}, "/business").
 		Middleware(
 			JWTAuthMiddleware([]string{
 				jwtSecret1,
@@ -114,7 +114,7 @@ func TestHTTP(t *testing.T) {
 			}),
 		)
 
-	router := gglmm.GenerateHttpRouter()
+	router := gglmm.handleHTTPRouter()
 	check(router, "/api/test/login1", 1, t)
 	check(router, "/api/test/login2", 2, t)
 }
@@ -126,7 +126,7 @@ func check(router *mux.Router, url string, result int64, t *testing.T) {
 
 	router.ServeHTTP(wLogin, rLogin)
 
-	responseLogin := gglmm.NewResponse()
+	responseLogin := gglmm.OkResponse()
 	if err := json.Unmarshal(wLogin.Body.Bytes(), responseLogin); err != nil {
 		t.Log(err)
 		t.Fail()
@@ -145,7 +145,7 @@ func check(router *mux.Router, url string, result int64, t *testing.T) {
 
 	router.ServeHTTP(wBusiness, rBusiness)
 
-	responseBusiness := gglmm.NewResponse()
+	responseBusiness := gglmm.OkResponse()
 	if err := json.Unmarshal(wBusiness.Body.Bytes(), responseBusiness); err != nil {
 		t.Log(err)
 		t.Fail()
@@ -161,3 +161,4 @@ func check(router *mux.Router, url string, result int64, t *testing.T) {
 		t.Fail()
 	}
 }
+*/
