@@ -10,37 +10,37 @@ import (
 )
 
 const (
-	wechatMiniProgramCode2SessionURL = "https://api.weixin.qq.com/sns/jscode2session?grant_type=authorization_code"
+	MiniProgramCode2SessionURL = "https://api.weixin.qq.com/sns/jscode2session?grant_type=authorization_code"
 )
 
 // DecodeWechatMiniProgramLoginRequest --
-func DecodeWechatMiniProgramLoginRequest(r *http.Request) (*WechatMiniProgramLoginRequest, error) {
+func DecodeWechatMiniProgramLoginRequest(r *http.Request) (*MiniProgramLoginRequest, error) {
 	decoder := json.NewDecoder(r.Body)
-	request := &WechatMiniProgramLoginRequest{}
+	request := &MiniProgramLoginRequest{}
 	if err := decoder.Decode(request); err != nil {
 		return nil, err
 	}
 	if !request.Check() {
-		return nil, errors.New("WechatMiniProgramLoginRequest check error!")
+		return nil, errors.New("MiniProgramLoginRequest check error!")
 	}
 	return request, nil
 }
 
 // DecodeWechatMiniProgramUserInfoRequest --
-func DecodeWechatMiniProgramUserInfoRequest(r *http.Request) (*WechatMiniProgramUserInfoRequest, error) {
+func DecodeWechatMiniProgramUserInfoRequest(r *http.Request) (*MiniProgramUserInfoRequest, error) {
 	decoder := json.NewDecoder(r.Body)
-	request := &WechatMiniProgramUserInfoRequest{}
+	request := &MiniProgramUserInfoRequest{}
 	if err := decoder.Decode(request); err != nil {
 		return nil, err
 	}
 	if !request.Check("raw") && !request.Check("encrypted") {
-		return nil, errors.New("WechatMiniProgramUserInfoRequest check error!")
+		return nil, errors.New("MiniProgramUserInfoRequest check error!")
 	}
 	return request, nil
 }
 
-// WechatMiniProgramCode2Session --
-func WechatMiniProgramCode2Session(appID string, appSecret string, code string) (*WechatCode2SessionResponse, error) {
+// MiniProgramCode2Session --
+func MiniProgramCode2Session(appID string, appSecret string, code string) (*MiniProgramCode2SessionResponse, error) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -50,7 +50,7 @@ func WechatMiniProgramCode2Session(appID string, appSecret string, code string) 
 		Timeout:   15 * time.Second,
 		Transport: transport,
 	}
-	url := wechatMiniProgramCode2SessionURL + "&appid=" + appID + "&secret=" + appSecret + "&js_code=" + code
+	url := MiniProgramCode2SessionURL + "&appid=" + appID + "&secret=" + appSecret + "&js_code=" + code
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func WechatMiniProgramCode2Session(appID string, appSecret string, code string) 
 	defer res.Body.Close()
 
 	decoder := json.NewDecoder(res.Body)
-	response := &WechatCode2SessionResponse{}
+	response := &MiniProgramCode2SessionResponse{}
 	if err := decoder.Decode(response); err != nil {
 		return nil, err
 	}
