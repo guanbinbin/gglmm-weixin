@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	MiniProgramCode2SessionURL = "https://api.weixin.qq.com/sns/jscode2session?grant_type=authorization_code"
+	miniProgramCode2SessionURL = "https://api.weixin.qq.com/sns/jscode2session?grant_type=authorization_code"
 )
 
 // DecodeWechatMiniProgramLoginRequest --
@@ -21,7 +21,7 @@ func DecodeWechatMiniProgramLoginRequest(r *http.Request) (*MiniProgramLoginRequ
 		return nil, err
 	}
 	if !request.Check() {
-		return nil, errors.New("MiniProgramLoginRequest check error!")
+		return nil, errors.New("MiniProgramLoginRequest check error")
 	}
 	return request, nil
 }
@@ -34,7 +34,7 @@ func DecodeWechatMiniProgramUserInfoRequest(r *http.Request) (*MiniProgramUserIn
 		return nil, err
 	}
 	if !request.Check("raw") && !request.Check("encrypted") {
-		return nil, errors.New("MiniProgramUserInfoRequest check error!")
+		return nil, errors.New("MiniProgramUserInfoRequest check error")
 	}
 	return request, nil
 }
@@ -50,7 +50,7 @@ func MiniProgramCode2Session(appID string, appSecret string, code string) (*Mini
 		Timeout:   15 * time.Second,
 		Transport: transport,
 	}
-	url := MiniProgramCode2SessionURL + "&appid=" + appID + "&secret=" + appSecret + "&js_code=" + code
+	url := miniProgramCode2SessionURL + "&appid=" + appID + "&secret=" + appSecret + "&js_code=" + code
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

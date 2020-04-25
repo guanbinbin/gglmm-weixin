@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 )
 
 // MiniProgramLoginRequest 微信小程序登录请求
@@ -87,22 +86,16 @@ func (request MiniProgramUserInfoRequest) Decrypt(sessionKey string) (*MiniProgr
 	if err != nil {
 		return nil, err
 	}
-	log.Println(request.EncryptedData)
-	log.Println(decodedData)
 
 	decodedIV, err := base64.StdEncoding.DecodeString(request.IV)
 	if err != nil {
 		return nil, err
 	}
-	log.Println(request.IV)
-	log.Println(decodedIV)
 
 	decodedSessionKey, err := base64.StdEncoding.DecodeString(sessionKey)
 	if err != nil {
 		return nil, err
 	}
-	log.Println(sessionKey)
-	log.Println(decodedSessionKey)
 
 	block, err := aes.NewCipher(decodedSessionKey)
 	if err != nil {
@@ -111,8 +104,6 @@ func (request MiniProgramUserInfoRequest) Decrypt(sessionKey string) (*MiniProgr
 	decrypter := cipher.NewCBCDecrypter(block, decodedIV)
 	originData := make([]byte, len(decodedData))
 	decrypter.CryptBlocks(originData, decodedData)
-
-	log.Println(string(originData))
 
 	miniProgramUserInfo := &MiniProgramUserInfo{}
 	decoder := json.NewDecoder(bytes.NewReader(originData))
