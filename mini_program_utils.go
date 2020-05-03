@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"time"
 )
@@ -20,9 +19,6 @@ func DecodeWechatMiniProgramLoginRequest(r *http.Request) (*MiniProgramLoginRequ
 	if err := decoder.Decode(request); err != nil {
 		return nil, err
 	}
-	if !request.Check() {
-		return nil, errors.New("MiniProgramLoginRequest check error")
-	}
 	return request, nil
 }
 
@@ -32,9 +28,6 @@ func DecodeWechatMiniProgramUserInfoRequest(r *http.Request) (*MiniProgramUserIn
 	request := &MiniProgramUserInfoRequest{}
 	if err := decoder.Decode(request); err != nil {
 		return nil, err
-	}
-	if !request.Check("raw") && !request.Check("encrypted") {
-		return nil, errors.New("MiniProgramUserInfoRequest check error")
 	}
 	return request, nil
 }
@@ -55,15 +48,11 @@ func MiniProgramCode2Session(appID string, appSecret string, code string) (*Mini
 	if err != nil {
 		return nil, err
 	}
-
-	log.Printf("code2session start %s\n", time.Now())
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("code2session end   %s\n", time.Now())
 	defer res.Body.Close()
-
 	decoder := json.NewDecoder(res.Body)
 	response := &MiniProgramCode2SessionResponse{}
 	if err := decoder.Decode(response); err != nil {
