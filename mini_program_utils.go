@@ -1,4 +1,4 @@
-package wechat
+package weixin
 
 import (
 	"crypto/tls"
@@ -12,8 +12,8 @@ const (
 	miniProgramCode2SessionURL = "https://api.weixin.qq.com/sns/jscode2session?grant_type=authorization_code"
 )
 
-// DecodeWechatMiniProgramLoginRequest --
-func DecodeWechatMiniProgramLoginRequest(r *http.Request) (*MiniProgramLoginRequest, error) {
+// DecodeMiniProgramLoginRequest --
+func DecodeMiniProgramLoginRequest(r *http.Request) (*MiniProgramLoginRequest, error) {
 	decoder := json.NewDecoder(r.Body)
 	request := &MiniProgramLoginRequest{}
 	if err := decoder.Decode(request); err != nil {
@@ -22,8 +22,8 @@ func DecodeWechatMiniProgramLoginRequest(r *http.Request) (*MiniProgramLoginRequ
 	return request, nil
 }
 
-// DecodeWechatMiniProgramUserInfoRequest --
-func DecodeWechatMiniProgramUserInfoRequest(r *http.Request) (*MiniProgramUserInfoRequest, error) {
+// DecodeMiniProgramUserInfoRequest --
+func DecodeMiniProgramUserInfoRequest(r *http.Request) (*MiniProgramUserInfoRequest, error) {
 	decoder := json.NewDecoder(r.Body)
 	request := &MiniProgramUserInfoRequest{}
 	if err := decoder.Decode(request); err != nil {

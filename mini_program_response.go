@@ -1,4 +1,4 @@
-package wechat
+package weixin
 
 // MiniProgramResponse --
 type MiniProgramResponse struct {
