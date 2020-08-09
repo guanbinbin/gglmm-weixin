@@ -15,21 +15,21 @@ const (
 // DecodeMiniProgramLoginRequest --
 func DecodeMiniProgramLoginRequest(r *http.Request) (*MiniProgramLoginRequest, error) {
 	decoder := json.NewDecoder(r.Body)
-	request := &MiniProgramLoginRequest{}
-	if err := decoder.Decode(request); err != nil {
+	request := MiniProgramLoginRequest{}
+	if err := decoder.Decode(&request); err != nil {
 		return nil, err
 	}
-	return request, nil
+	return &request, nil
 }
 
 // DecodeMiniProgramUserInfoRequest --
 func DecodeMiniProgramUserInfoRequest(r *http.Request) (*MiniProgramUserInfoRequest, error) {
 	decoder := json.NewDecoder(r.Body)
-	request := &MiniProgramUserInfoRequest{}
-	if err := decoder.Decode(request); err != nil {
+	request := MiniProgramUserInfoRequest{}
+	if err := decoder.Decode(&request); err != nil {
 		return nil, err
 	}
-	return request, nil
+	return &request, nil
 }
 
 // MiniProgramCode2Session --
@@ -54,12 +54,12 @@ func MiniProgramCode2Session(appID string, appSecret string, code string) (*Mini
 	}
 	defer res.Body.Close()
 	decoder := json.NewDecoder(res.Body)
-	response := &MiniProgramCode2SessionResponse{}
-	if err := decoder.Decode(response); err != nil {
+	response := MiniProgramCode2SessionResponse{}
+	if err := decoder.Decode(&response); err != nil {
 		return nil, err
 	}
 	if response.ErrCode != 0 {
 		return nil, errors.New(response.ErrMsg)
 	}
-	return response, nil
+	return &response, nil
 }

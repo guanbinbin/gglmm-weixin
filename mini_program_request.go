@@ -23,33 +23,35 @@ func (request MiniProgramLoginRequest) Check() bool {
 	return true
 }
 
+// MiniProgramUserInfo 微信小程序用户信息
+type MiniProgramUserInfo struct {
+	Nickname  string `json:"nickName"`
+	AvatarURL string `json:"avatarUrl"`
+	Gender    int8   `json:"gender"`
+	Province  string `json:"province"`
+	City      string `json:"city"`
+	Country   string `json:"country"`
+	Language  string `json:"language"`
+	OpenID    string `json:"openId"`
+	UnionID   string `json:"unionId"`
+}
+
 // MiniProgramUserInfoWatermark 微信小程序用户信息水印
 type MiniProgramUserInfoWatermark struct {
 	AppID     string `json:"appid"`
 	Timestamp uint64 `json:"timestamp"`
 }
 
-// MiniProgramUserInfo 微信小程序用户信息
-type MiniProgramUserInfo struct {
-	Nickname  string                       `json:"nickName"`
-	AvatarURL string                       `json:"avatarUrl"`
-	Gender    int8                         `json:"gender"`
-	Province  string                       `json:"province"`
-	City      string                       `json:"city"`
-	Country   string                       `json:"country"`
-	Language  string                       `json:"language"`
-	OpenID    string                       `json:"openId"`
-	UnionID   string                       `json:"unionId"`
-	Watermark MiniProgramUserInfoWatermark `json:"watermark"`
-}
-
 // MiniProgramUserInfoRequest 微信小程序用户信息请求
 type MiniProgramUserInfoRequest struct {
-	UserInfo      MiniProgramUserInfo `json:"userInfo"`
-	RawData       string              `json:"rawData"`
-	Signature     string              `json:"signature"`
-	EncryptedData string              `json:"encryptedData"`
-	IV            string              `json:"iv"`
+	UserInfo struct {
+		MiniProgramUserInfo
+		Watermark MiniProgramUserInfoWatermark
+	} `json:"userInfo"`
+	RawData       string `json:"rawData"`
+	Signature     string `json:"signature"`
+	EncryptedData string `json:"encryptedData"`
+	IV            string `json:"iv"`
 }
 
 // Check --
@@ -86,17 +88,14 @@ func (request MiniProgramUserInfoRequest) Decrypt(sessionKey string) (*MiniProgr
 	if err != nil {
 		return nil, err
 	}
-
 	decodedIV, err := base64.StdEncoding.DecodeString(request.IV)
 	if err != nil {
 		return nil, err
 	}
-
 	decodedSessionKey, err := base64.StdEncoding.DecodeString(sessionKey)
 	if err != nil {
 		return nil, err
 	}
-
 	block, err := aes.NewCipher(decodedSessionKey)
 	if err != nil {
 		return nil, err
@@ -104,12 +103,10 @@ func (request MiniProgramUserInfoRequest) Decrypt(sessionKey string) (*MiniProgr
 	decrypter := cipher.NewCBCDecrypter(block, decodedIV)
 	originData := make([]byte, len(decodedData))
 	decrypter.CryptBlocks(originData, decodedData)
-
 	miniProgramUserInfo := &MiniProgramUserInfo{}
 	decoder := json.NewDecoder(bytes.NewReader(originData))
 	if err = decoder.Decode(miniProgramUserInfo); err != nil {
 		return nil, err
 	}
-
 	return miniProgramUserInfo, nil
 }
